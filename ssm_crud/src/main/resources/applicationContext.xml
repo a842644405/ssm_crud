@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+	<context:component-scan base-package="com.my">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	
+	<!-- 数据源 -->
+	<context:property-placeholder location="classpath:jdbc.properties"/>
+	<!-- 引入配置文件 --> 
+   <!--  <bean id="propertyConfigurer"  
+        class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">  
+        <property name="locations">
+			<array>
+				<value>classpath:jdbc.properties</value>
+			</array>        
+        </property>
+    </bean>   -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+	 	<property name="driverClass" value="com.mysql.cj.jdbc.Driver" />
+		<property name="jdbcUrl" value="jdbc:mysql://localhost:3306/ssm_crud?serverTimezone=GMT%2B8" />
+		<property name="user" value="root" />
+		<property name="password" value="159357" />
+	 </bean>
+	 
+	 <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+	 	<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+	 	<property name="dataSource" ref="dataSource"></property>
+	 	<property name="mapperLocations" value="classpath:mapper/*.xml"></property>
+	 </bean>
+	 
+	 <!-- sqlSession -->
+	 <bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+	 	<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory"></constructor-arg>
+	 	<constructor-arg name="executorType" value="BATCH"></constructor-arg>
+	 </bean>
+	 <!-- 扫描器 -->
+	 <!-- 将SqlSessionFactory交给spring -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer" >
+		<!-- 指定批量产生那个包中的mapper接口 生成动态代理对象 （接口首字母小写studengMapper）-->
+		<property name="basePackage" value="com.my.dao"></property>
+	</bean>
+	
+	<!-- 事务控制的配置 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<!-- 控制数据源 -->
+		<property name="dataSource" ref="dataSource"></property>
+		
+	</bean>
+	
+	<aop:config>
+		<aop:pointcut expression="execution(* com.my.service..*(..))" id="txPoint"/>
+		<!-- 配置事务增强-->
+		<aop:advisor advice-ref="txAdivce" pointcut-ref="txPoint"/>
+	</aop:config>
+	
+	<tx:advice id="txAdivce" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="*"/>
+			<tx:method name="get*" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+</beans>
